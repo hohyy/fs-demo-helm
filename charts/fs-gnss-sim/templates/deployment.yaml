@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fs-gnss-sim.fullname" . }}
+  labels:
+    {{- include "fs-gnss-sim.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fs-gnss-sim.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "fs-gnss-sim.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "fs-gnss-sim.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - mountPath: /gnss_sim
+            name: vol0
+          env:
+          {{- if .Values.global.env.STATION_ID }}
+          - name: STATION_ID
+            value: "{{ .Values.global.env.STATION_ID }}"
+          {{- end }}
+          {{- if .Values.global.env.STATION_ABBR }}
+          - name: STATION_ABBR
+            value: {{ .Values.global.env.STATION_ABBR }}
+          {{- end }}
+          {{- if .Values.global.env.DEVICE_TYPE }}
+          - name: DEVICE_TYPE
+            value: "{{ .Values.global.env.DEVICE_TYPE }}"
+          {{- end }}
+          {{- if .Values.global.env.DEVICE_SEQ_NO }}
+          - name: DEVICE_SEQ_NO
+            value: "{{ .Values.global.env.DEVICE_SEQ_NO }}"
+          {{- end }}
+          {{- if .Values.global.env.EQUIPMENT_ID }}
+          - name: EQUIPMENT_ID
+            value: {{ .Values.global.env.EQUIPMENT_ID }}
+          {{- end }}
+          {{- if .Values.global.env.MQTT_BROKER_IP_ADDRESS }}
+          - name: MQTT_BROKER_IP_ADDRESS
+            value: {{ .Values.global.env.MQTT_BROKER_IP_ADDRESS }}
+          {{- end }}
+          {{- if .Values.global.env.MQTT_BROKER_PORT }}
+          - name: MQTT_BROKER_PORT
+            value: "{{ .Values.global.env.MQTT_BROKER_PORT }}"
+          {{- end }}
+      volumes:
+      - name: vol0
+        persistentVolumeClaim:
+          claimName: gnss-sim      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
